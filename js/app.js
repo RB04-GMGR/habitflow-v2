@@ -48,7 +48,7 @@ let viewYear  = new Date().getFullYear();
 let editingHabitId = null;
 let unsubLogs = null;
 let unsubHabits = null;
-
+let dailyTasks = {};
 const TODAY = new Date();
 
 // ── HELPERS ─────────────────────────────────────────────────────
@@ -157,6 +157,7 @@ onAuthStateChanged(auth, async user=>{
     loadTheme();
     await loadHabitsFromDB();
     await loadLogsFromDB();
+    await loadTasksFromDB();
     renderAll();
   } else {
     currentUser=null;
@@ -184,6 +185,20 @@ async function loadLogsFromDB(){
     const snap=await getDoc(ref);
     if(snap.exists()){ Object.assign(logs,snap.data().days||{}); }
   }
+}
+
+async function loadTasksFromDB(){
+  const k = todayKey();
+  const ref = doc(db,'tasks',`${currentUser.uid}_${k}`);
+  const snap = await getDoc(ref);
+  if(snap.exists()) dailyTasks[k] = snap.data().list || [];
+  else dailyTasks[k] = [];
+}
+
+async function saveTasksToDB(){
+  if(!currentUser) return;
+  const k = todayKey();
+  await setDoc(doc(db,'tasks',`${currentUser.uid}_${k}`), { list: dailyTasks[k]||[] });
 }
 
 async function saveHabitsToDB(){
@@ -294,10 +309,114 @@ function loadTheme(){
   if(btn){ document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
 }
 
+window.addTask = async function(){
+  const input = document.getElementById('task-input');
+  const name = input.value.trim();
+  if(!name) return;
+  const k = todayKey();
+  if(!dailyTasks[k]) dailyTasks[k] = [];
+  dailyTasks[k].push({ id:'task-'+Date.now(), name, done:false });
+  await saveTasksToDB();
+  input.value = '';
+  renderTasks();
+};
+
+window.toggleTask = async function(id){
+  const k = todayKey();
+  const t = dailyTasks[k]?.find(x=>x.id===id);
+  if(t){ t.done=!t.done; await saveTasksToDB(); renderTasks(); }
+};
+
+window.deleteTask = async function(id){
+  const k = todayKey();
+  dailyTasks[k] = (dailyTasks[k]||[]).filter(x=>x.id!==id);
+  await saveTasksToDB();
+  renderTasks();
+};
+
+function renderTasks(){
+  const k = todayKey();
+  const tasks = dailyTasks[k] || [];
+  const list = document.getElementById('tasks-list');
+  if(!list) return;
+  const dt = TODAY.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+  const el = document.getElementById('tasks-date');
+  if(el) el.textContent = dt;
+  list.innerHTML = '';
+  if(tasks.length === 0){
+    list.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">Aucune tâche — ajoute ce que tu veux faire aujourd\'hui</div>';
+    return;
+  }
+  tasks.forEach(t=>{
+    const item = document.createElement('div');
+    item.className = 'task-item' + (t.done?' done':'');
+    item.innerHTML = `
+      <div class="task-check" onclick="toggleTask('${t.id}')">
+        ${t.done?'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}
+      </div>
+      <span class="task-name">${t.name}</span>
+      <button class="task-del" onclick="deleteTask('${t.id}')">✕</button>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function renderDashHabits(){
+  const log = getDayLog(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
+  const done = habits.filter(h=>log[h.id]).length;
+  const pct = habits.length>0?Math.round((done/habits.length)*100):0;
+  const container = document.getElementById('dash-habits');
+  if(!container) return;
+  container.innerHTML = '';
+
+  // mini progress bar
+  const prog = document.createElement('div');
+  prog.className = 'progress-mini';
+  prog.innerHTML = `
+    <div class="progress-mini-label">
+      <span>${done}/${habits.length} habitudes</span>
+      <span>${pct}%</span>
+    </div>
+    <div class="progress-mini-bar">
+      <div class="progress-mini-fill" style="width:${pct}%"></div>
+    </div>
+  `;
+  container.appendChild(prog);
+
+  if(habits.length === 0){
+    const empty = document.createElement('div');
+    empty.style = 'font-size:12px;color:var(--text3);padding:12px 0;';
+    empty.textContent = 'Aucune habitude — ajoute-en dans Paramètres';
+    container.appendChild(empty);
+    return;
+  }
+
+  habits.forEach(h=>{
+    const isDone = !!log[h.id];
+    const isMissed = !isDone && (isLate(h)||isPastTime(h.time));
+    const row = document.createElement('div');
+    row.className = 'habit-row-dash'+(isDone?' done':isMissed?' missed':'');
+    row.onclick = ()=>toggleHabit(h.id);
+    const check = isDone
+      ?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+      :isMissed
+      ?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+      :'';
+    row.innerHTML = `
+      <div class="hrd-check">${check}</div>
+      <span class="hrd-name">${h.name}</span>
+      <span class="hrd-time">${h.time}</span>
+    `;
+    container.appendChild(row);
+  });
+}
+
 // ── RENDER ALL ──────────────────────────────────────────────────
 function renderAll(){
   renderWeekHeader();
   renderWeekGrid();
+  renderDashHabits();
+  renderTasks();
   renderCalendar();
   renderStats();
   renderProgBars();

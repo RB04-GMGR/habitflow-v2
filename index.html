@@ -109,8 +109,31 @@
       </div>
 
       <!-- Weekly grid -->
-      <div class="week-grid" id="week-grid"></div>
+       <!-- Dashboard deux colonnes -->
+<div class="dashboard-layout">
+  <div class="dash-col">
+    <div class="dash-col-title">📋 Habitudes quotidiennes</div>
+    <div class="habits-daily-card" id="dash-habits"></div>
+  </div>
+  <div class="dash-col">
+    <div class="dash-col-title">✅ Tâches du jour</div>
+    <div class="tasks-card">
+      <div class="tasks-header">
+        <span class="tasks-title">À faire aujourd'hui</span>
+        <span class="tasks-date" id="tasks-date"></span>
+      </div>
+      <div id="tasks-list"></div>
+      <div class="task-add-row">
+        <input type="text" id="task-input" class="form-input" placeholder="Ajouter une tâche..."/>
+        <button class="task-add-btn" onclick="addTask()">+</button>
+      </div>
+    </div>
+  </div>
+</div>
 
+<!-- Weekly grid -->
+<div class="section-label">Vue de la semaine</div>
+<div class="week-grid" id="week-grid"></div>
       <!-- Monthly calendar -->
       <div class="section-label">Calendrier mensuel</div>
       <div class="cal-nav">
@@ -193,6 +216,13 @@
         <button class="theme-btn" data-theme="ocean" onclick="setTheme('ocean',this)"><span class="tswatch" style="background:linear-gradient(135deg,#06b6d4,#3b82f6)"></span>Océan</button>
         <button class="theme-btn" data-theme="aurora" onclick="setTheme('aurora',this)"><span class="tswatch" style="background:linear-gradient(135deg,#10b981,#6366f1)"></span>Aurora</button>
         <button class="theme-btn" data-theme="sunset" onclick="setTheme('sunset',this)"><span class="tswatch" style="background:linear-gradient(135deg,#f97316,#ec4899)"></span>Sunset</button>
+      <button class="theme-btn" data-theme="light-rose" onclick="setTheme('light-rose',this)"><span class="tswatch" style="background:linear-gradient(135deg,#ec4899,#f9a8d4);border:1px solid #f9a8d4"></span>Rose clair</button>
+      <button class="theme-btn" data-theme="girl" onclick="setTheme('girl',this)"><span class="tswatch" style="background:linear-gradient(135deg,#ff4d8d,#ffb3d1);border:1px solid #ffb3d1"></span>I'm just a girl 🎀</button>
+      <button class="theme-btn" data-theme="light-blue" onclick="setTheme('light-blue',this)"><span class="tswatch" style="background:linear-gradient(135deg,#3b82f6,#6366f1);"></span>Bleu clair</button>
+      <button class="theme-btn" data-theme="light-green" onclick="setTheme('light-green',this)"><span class="tswatch" style="background:linear-gradient(135deg,#10b981,#34d399);"></span>Vert clair</button>
+      <button class="theme-btn" data-theme="light-purple" onclick="setTheme('light-purple',this)"><span class="tswatch" style="background:linear-gradient(135deg,#8b5cf6,#a855f7);"></span>Violet clair</button>
+      <button class="theme-btn" data-theme="light-peach" onclick="setTheme('light-peach',this)"><span class="tswatch" style="background:linear-gradient(135deg,#f97316,#fb923c);"></span>Pêche</button>
+      <button class="theme-btn" data-theme="light-mint" onclick="setTheme('light-mint',this)"><span class="tswatch" style="background:linear-gradient(135deg,#06b6d4,#22d3ee);"></span>Menthe</button>
       </div>
 
       <div class="section-label">Mes habitudes</div>
