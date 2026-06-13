@@ -205,6 +205,7 @@
         <input type="text" id="f-time" placeholder="Horaire (ex: 06:00 – 07:00)" class="form-input"/>
         <div class="form-row">
           <select id="f-cat" class="form-input">
+            <option value="">-- Aucune catégorie --</option>
             <option value="spirit">Spirituel</option>
             <option value="corps">Corps</option>
             <option value="etudes">Études</option>
@@ -212,7 +213,9 @@
             <option value="sport">Sport</option>
             <option value="menage">Ménage</option>
             <option value="perso">Perso</option>
+            <option value="custom">➕ Autre (personnalisé)</option>
           </select>
+          <input type="text" id="f-cat-custom" placeholder="Nom de ta catégorie" class="form-input hidden"/>
           <button class="btn-primary small" id="form-submit-btn" onclick="submitHabit()">Ajouter</button>
           <button class="btn-cancel small hidden" id="form-cancel-btn" onclick="cancelEdit()">Annuler</button>
         </div>

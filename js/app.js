@@ -3,14 +3,14 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, si
 import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ── FIREBASE CONFIG ─────────────────────────────────────────────
-// 🔴 REMPLACE CES VALEURS PAR CELLES DE TON PROJET FIREBASE sportkit-sn
+// 🔴 REMPLACE CES VALEURS PAR CELLES DE TON PROJET FIREBASE 
 const firebaseConfig = {
-  apiKey: "VOTRE_API_KEY",
-  authDomain: "VOTRE_AUTH_DOMAIN",
-  projectId: "VOTRE_PROJECT_ID",
-  storageBucket: "VOTRE_STORAGE_BUCKET",
-  messagingSenderId: "VOTRE_SENDER_ID",
-  appId: "VOTRE_APP_ID"
+  apiKey: "AIzaSyClmXYGE3KKjizshLekRw4F8ej3n4de-ks",
+  authDomain: "habitflow-v2-91bf8.firebaseapp.com",
+  projectId: "habitflow-v2-91bf8",
+  storageBucket: "habitflow-v2-91bf8.firebasestorage.app",
+  messagingSenderId: "763190948843",
+  appId: "1:763190948843:web:90c2cfb169165ba78b9fae"
 };
 
 const app  = initializeApp(firebaseConfig);
@@ -18,20 +18,7 @@ const auth = getAuth(app);
 const db   = getFirestore(app);
 
 // ── DEFAULT HABITS ──────────────────────────────────────────────
-const DEFAULT_HABITS = [
-  { id:'lever',        name:'Lever à 05h30',                       time:'05:30',          cat:'corps'  },
-  { id:'priere-matin', name:'Prière + rituel matinal',              time:'05:30 – 06:15',  cat:'spirit' },
-  { id:'entretien',    name:'Entretien corps (douche, soins)',       time:'06:15 – 07:00',  cat:'corps'  },
-  { id:'menage-mat',   name:'Tâches ménagères matinales',           time:'07:00 – 07:45',  cat:'menage' },
-  { id:'etudes1',      name:'Études — bloc 1',                      time:'08:00 – 10:00',  cat:'etudes' },
-  { id:'etudes2',      name:'Études — bloc 2 (data / BDD)',         time:'10:15 – 12:00',  cat:'etudes' },
-  { id:'sportkit',     name:'SportKit SN — développement',          time:'13:30 – 16:00',  cat:'dev'    },
-  { id:'revisions',    name:'Révisions / projets scolaires',        time:'16:00 – 17:00',  cat:'etudes' },
-  { id:'sport',        name:'Sport — MMA / Boxe',                   time:'17:00 – 20:00',  cat:'sport'  },
-  { id:'rangement',    name:'Rangement chambre',                    time:'17:30 – 18:30',  cat:'menage' },
-  { id:'priere-soir',  name:'Prière du soir + planification J+1',   time:'20:30 – 21:00',  cat:'spirit' },
-  { id:'coucher',      name:'Coucher avant 21h30',                  time:'21:30',          cat:'perso'  },
-];
+const DEFAULT_HABITS = [];
 
 const CAT_META = {
   spirit:{ label:'Spirituel', pill:'pill-spirit', color:'#a78bfa' },
@@ -43,7 +30,13 @@ const CAT_META = {
   perso: { label:'Perso',     pill:'pill-perso',  color:'#6ee7b7' },
 };
 
-const MOTTOS = ['Discipline = liberté','Ceinture noire mindset','Un jour à la fois','Tu avances !','Régularité > intensité','Bien joué !','Continue comme ça 💪'];
+function getCatMeta(cat) {
+  if(CAT_META[cat]) return CAT_META[cat];
+  // Catégorie personnalisée — couleur et style génériques
+  return { label: cat.charAt(0).toUpperCase() + cat.slice(1), pill:'pill-perso', color:'#94a3b8' };
+}
+
+const MOTTOS = ['Discipline = liberté','Ceinture noire mindset','Un jour à la fois','Tu avances !','Régularité > intensité','Bien joué !','Continue comme ça 💪', 'Good job roxy'];
 
 // ── STATE ───────────────────────────────────────────────────────
 let currentUser = null;
@@ -232,7 +225,12 @@ window.editWeeklyFocus = function(){
 window.submitHabit = async function(){
   const name=document.getElementById('f-name').value.trim();
   const time=document.getElementById('f-time').value.trim()||'Toute la journée';
-  const cat=document.getElementById('f-cat').value;
+let cat = document.getElementById('f-cat').value;
+if(cat === 'custom'){
+  const customVal = document.getElementById('f-cat-custom').value.trim();
+  cat = customVal || 'perso';
+}
+if(!cat) cat = 'perso';
   if(!name){showToast('Entre un nom');return;}
   if(editingHabitId){
     const idx=habits.findIndex(h=>h.id===editingHabitId);
@@ -394,7 +392,7 @@ function renderToday(){
     group.className='cat-group';
     const lbl=document.createElement('div');
     lbl.className='cat-group-lbl';
-    lbl.textContent=CAT_META[cat]?.label||cat;
+    lbl.textContent=getCatMeta(cat).label||cat;
     group.appendChild(lbl);
     catHabits.forEach(h=>{
       const isDone=!!log[h.id];
@@ -411,8 +409,8 @@ function renderToday(){
         :isMissed
         ?`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
         :'';
-      const pill=CAT_META[cat]?.pill||'pill-perso';
-      const catLbl=CAT_META[cat]?.label||cat;
+      const pill=getCatMeta(cat).pill||'pill-perso';
+      const catLbl=getCatMeta(cat).label||cat;
       item.innerHTML=`
         <div class="habit-check">${check}</div>
         <div class="habit-info">
@@ -486,8 +484,8 @@ function renderProgBars(){
       cnt++;
     }
     const avg=cnt>0?Math.round(tot/cnt):0;
-    const color=CAT_META[cat]?.color||'#888';
-    const label=CAT_META[cat]?.label||cat;
+    const color=getCatMeta(cat).color||'#888';
+    const label=getCatMeta(cat).label||cat;
     const row=document.createElement('div');
     row.className='prog-row';
     row.innerHTML=`
@@ -505,8 +503,8 @@ function renderSettingsHabits(){
   habits.forEach((h,idx)=>{
     const item=document.createElement('div');
     item.className='settings-habit-item';
-    const pill=CAT_META[h.cat]?.pill||'pill-perso';
-    const catLbl=CAT_META[h.cat]?.label||h.cat;
+    const pill= getCatMeta(h.cat).pill||'pill-perso';
+    const catLbl=getCatMeta(h.cat).label;
     item.innerHTML=`
       <div class="shi-info">
         <div class="shi-name">${h.name}</div>
@@ -593,4 +591,9 @@ window.showToast=showToast;
 setInterval(()=>{
   const log=getDayLog(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
   if(habits.some(h=>!log[h.id]&&(isLate(h)||isPastTime(h.time)))) renderToday();
+document.getElementById('f-cat').addEventListener('change', function(){
+  const custom = document.getElementById('f-cat-custom');
+  if(this.value === 'custom') custom.classList.remove('hidden');
+  else custom.classList.add('hidden');
+});
 },60000);
