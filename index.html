@@ -108,28 +108,30 @@
         </div>
       </div>
 
-      <!-- Weekly grid -->
-       <!-- Dashboard deux colonnes -->
-<div class="dashboard-layout">
-  <div class="dash-col">
-    <div class="dash-col-title">📋 Habitudes quotidiennes</div>
-    <div class="habits-daily-card" id="dash-habits"></div>
+<!-- HABIT TRACKER MATRIX -->
+<div class="tracker-wrap">
+  <div class="tracker-header-row">
+    <div class="tracker-title">Habit tracker</div>
+    <div class="tracker-progress-label">Progress</div>
   </div>
-  <div class="dash-col">
-    <div class="dash-col-title">✅ Tâches du jour</div>
-    <div class="tasks-card">
-      <div class="tasks-header">
-        <span class="tasks-title">À faire aujourd'hui</span>
-        <span class="tasks-date" id="tasks-date"></span>
-      </div>
-      <div id="tasks-list"></div>
-      <div class="task-add-row">
-        <input type="text" id="task-input" class="form-input" placeholder="Ajouter une tâche..."/>
-        <button class="task-add-btn" onclick="addTask()">+</button>
-      </div>
-    </div>
+  <div class="tracker-table-wrap">
+    <table class="tracker-table" id="tracker-table">
+      <thead>
+        <tr>
+          <th class="th-habit">Habit</th>
+          <th>Lun</th><th>Mar</th><th>Mer</th>
+          <th>Jeu</th><th>Ven</th><th>Sam</th><th>Dim</th>
+          <th class="th-progress">Progress</th>
+        </tr>
+      </thead>
+      <tbody id="tracker-body"></tbody>
+    </table>
   </div>
 </div>
+
+<!-- DAY CARDS + TASKS -->
+<div class="section-label">Tâches par jour</div>
+<div class="day-cards-grid" id="day-cards-grid"></div>
 
 <!-- Weekly grid -->
 <div class="section-label">Vue de la semaine</div>

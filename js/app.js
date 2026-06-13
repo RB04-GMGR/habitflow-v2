@@ -188,11 +188,17 @@ async function loadLogsFromDB(){
 }
 
 async function loadTasksFromDB(){
-  const k = todayKey();
-  const ref = doc(db,'tasks',`${currentUser.uid}_${k}`);
-  const snap = await getDoc(ref);
-  if(snap.exists()) dailyTasks[k] = snap.data().list || [];
-  else dailyTasks[k] = [];
+  const dates = getWeekDates();
+  for(const dt of dates){
+    const dk = dkey(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    const ref = doc(db,'tasks',`${currentUser.uid}_${dk}`);
+    try {
+      const snap = await getDoc(ref);
+      dailyTasks[dk] = snap.exists() ? (snap.data().list||[]) : [];
+    } catch(e) {
+      dailyTasks[dk] = [];
+    }
+  }
 }
 
 async function saveTasksToDB(){
@@ -414,9 +420,8 @@ function renderDashHabits(){
 // ── RENDER ALL ──────────────────────────────────────────────────
 function renderAll(){
   renderWeekHeader();
-  renderWeekGrid();
-  renderDashHabits();
-  renderTasks();
+  renderTrackerMatrix();
+  renderDayCards();
   renderCalendar();
   renderStats();
   renderProgBars();
@@ -436,49 +441,181 @@ function renderWeekHeader(){
 function getMonday(d){ const day=d.getDay(); const diff=d.getDate()-(day===0?6:day-1); return new Date(d.getFullYear(),d.getMonth(),diff); }
 
 // ── WEEK GRID ────────────────────────────────────────────────────
-function renderWeekGrid(){
-  const monday=getMonday(TODAY);
-  const grid=document.getElementById('week-grid');
-  grid.innerHTML='';
-  const days=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+function renderWeekGrid(){ /* remplacé par renderTrackerMatrix */ }
+
+function getWeekDates(){
+  const monday = getMonday(TODAY);
+  const dates = [];
   for(let i=0;i<7;i++){
-    const dt=new Date(monday); dt.setDate(monday.getDate()+i);
-    const isToday=dt.toDateString()===TODAY.toDateString();
-    const isFuture=dt>TODAY;
-    const log=getDayLog(dt.getFullYear(),dt.getMonth(),dt.getDate());
-    const done=habits.filter(h=>log[h.id]).length;
-    const pct=habits.length>0?Math.round((done/habits.length)*100):0;
-    const circ=113; const offset=circ-(circ*pct/100);
+    const dt = new Date(monday);
+    dt.setDate(monday.getDate()+i);
+    dates.push(dt);
+  }
+  return dates;
+}
 
-    // ring color
-    const ringColor=pct>=100?'#34d399':pct>=75?'#84cc16':pct>=50?'#fbbf24':'#f87171';
+function renderTrackerMatrix(){
+  const tbody = document.getElementById('tracker-body');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  const dates = getWeekDates();
 
-    const card=document.createElement('div');
-    card.className='week-day-card'+(isToday?' is-today':'');
-    card.innerHTML=`
-      <div class="wdc-name">${days[i]}</div>
-      <div class="wdc-date">${dt.getDate()}</div>
-      <div class="wdc-ring">
-        <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="24" cy="24" r="18" class="wdc-ring-bg"/>
-          <circle cx="24" cy="24" r="18" class="wdc-ring-fg"
+  if(habits.length === 0){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="9" style="text-align:center;padding:20px;font-size:13px;color:var(--text3);">
+      Aucune habitude — ajoute-en dans Paramètres
+    </td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  habits.forEach(h => {
+    const tr = document.createElement('tr');
+    let doneDays = 0;
+    let cells = '';
+
+    dates.forEach((dt,i) => {
+      const log = getDayLog(dt.getFullYear(), dt.getMonth(), dt.getDate());
+      const isDone = !!log[h.id];
+      const isFuture = dt > TODAY;
+      const isToday = dt.toDateString() === TODAY.toDateString();
+      const isMissed = !isDone && !isFuture && (isLate(h) || isPastTime(h.time));
+      if(isDone) doneDays++;
+
+      let cls = 'tracker-cb';
+      if(isDone) cls += ' done';
+      else if(isMissed) cls += ' missed';
+      else if(isFuture) cls += ' future';
+
+      const y = dt.getFullYear();
+      const m = dt.getMonth();
+      const d = dt.getDate();
+      const clickable = !isFuture;
+      const checkSvg = isDone
+        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+        : isMissed
+        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
+        : '';
+
+      cells += `<td>
+        <div class="${cls}" ${clickable?`onclick="toggleHabitDay('${h.id}',${y},${m},${d})"`:''}>
+          ${checkSvg}
+        </div>
+      </td>`;
+    });
+
+    const total = dates.filter(dt => dt <= TODAY).length;
+    const pct = total > 0 ? Math.round((doneDays/total)*100) : 0;
+    const isPerfect = pct === 100 && doneDays > 0;
+    const trophy = isPerfect ? ' 🏆' : '';
+
+    tr.innerHTML = `
+      <td class="td-habit">${h.name}</td>
+      ${cells}
+      <td class="td-progress ${isPerfect?'perfect':''}">
+        ${doneDays>0?pct+'%'+trophy:''}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderDayCards(){
+  const grid = document.getElementById('day-cards-grid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  const dates = getWeekDates();
+  const dayNames = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+
+  dates.forEach((dt, i) => {
+    const isToday = dt.toDateString() === TODAY.toDateString();
+    const isFuture = dt > TODAY;
+    const log = getDayLog(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    const done = habits.filter(h=>log[h.id]).length;
+    const pct = habits.length>0 ? Math.round((done/habits.length)*100) : 0;
+    const circ = 169;
+    const offset = circ - (circ*pct/100);
+    const ringColor = pct>=100?'#34d399':pct>=75?'#84cc16':pct>=50?'#fbbf24':'#f87171';
+    const dateStr = dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const dk = dkey(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    const tasks = dailyTasks[dk] || [];
+
+    const card = document.createElement('div');
+    card.className = 'day-card' + (isToday?' is-today':'');
+
+    const taskItems = tasks.map(t => `
+      <div class="day-task-item ${t.done?'done':''}">
+        <div class="day-task-cb ${t.done?'done':''}" onclick="toggleDayTask('${dk}','${t.id}')">
+          ${t.done?'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}
+        </div>
+        <span class="day-task-name">${t.name}</span>
+        <button class="day-task-del" onclick="deleteDayTask('${dk}','${t.id}')">✕</button>
+      </div>
+    `).join('');
+
+    card.innerHTML = `
+      <div class="day-card-header">
+        <div class="day-card-name">${dayNames[i]}</div>
+        <div class="day-card-date">${dateStr}</div>
+      </div>
+      <div class="day-card-ring-wrap">
+        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="32" cy="32" r="27" class="dc-ring-bg"/>
+          <circle cx="32" cy="32" r="27" class="dc-ring-fg"
             style="stroke:${isFuture?'var(--bg3)':ringColor};stroke-dashoffset:${isFuture?circ:offset}"/>
         </svg>
-        <div class="wdc-pct">${isFuture?'–':pct+'%'}</div>
+        <div class="dc-ring-pct">${isFuture?'–':pct+'%'}</div>
       </div>
-      <div class="wdc-habits">
-        ${habits.slice(0,4).map(h=>{
-          const isDone=!!log[h.id];
-          const isMissed=!isDone&&!isFuture&&isPastTime(h.time);
-          return `<div class="wdc-habit-dot">
-            <div class="${isDone?'dot-done':isMissed?'dot-miss':'dot-todo'}"></div>
-            <span>${h.name.slice(0,12)}</span>
-          </div>`;
-        }).join('')}
+      <div class="day-card-tasks">
+        ${taskItems.length>0?taskItems:'<div style="font-size:11px;color:var(--text3);padding:4px 0;">Aucune tâche</div>'}
+        <div class="day-task-add">
+          <input type="text" id="task-input-${dk}" placeholder="Ajouter..." onkeydown="if(event.key==='Enter')addDayTask('${dk}')"/>
+          <button onclick="addDayTask('${dk}')">+</button>
+        </div>
       </div>
     `;
     grid.appendChild(card);
-  }
+  });
+}
+
+window.toggleHabitDay = async function(habitId, y, m, d){
+  const k = dkey(y, m, d);
+  if(!logs[k]) logs[k] = {};
+  logs[k][habitId] = !logs[k][habitId];
+  await saveLogToDB(k);
+  if(logs[k][habitId]) showToast(MOTTOS[Math.floor(Math.random()*MOTTOS.length)]);
+  renderTrackerMatrix();
+  renderDayCards();
+  renderStats();
+  if(dkey(y,m,d) === todayKey()) renderToday();
+};
+
+window.addDayTask = async function(dk){
+  const input = document.getElementById('task-input-'+dk);
+  if(!input) return;
+  const name = input.value.trim();
+  if(!name) return;
+  if(!dailyTasks[dk]) dailyTasks[dk] = [];
+  dailyTasks[dk].push({id:'t-'+Date.now(), name, done:false});
+  await saveDayTasksToDB(dk);
+  input.value = '';
+  renderDayCards();
+};
+
+window.toggleDayTask = async function(dk, id){
+  const t = (dailyTasks[dk]||[]).find(x=>x.id===id);
+  if(t){ t.done=!t.done; await saveDayTasksToDB(dk); renderDayCards(); }
+};
+
+window.deleteDayTask = async function(dk, id){
+  dailyTasks[dk] = (dailyTasks[dk]||[]).filter(x=>x.id!==id);
+  await saveDayTasksToDB(dk);
+  renderDayCards();
+};
+
+async function saveDayTasksToDB(dk){
+  if(!currentUser) return;
+  await setDoc(doc(db,'tasks',`${currentUser.uid}_${dk}`), { list: dailyTasks[dk]||[] });
 }
 
 // ── TODAY VIEW ───────────────────────────────────────────────────
@@ -650,7 +787,7 @@ window.switchView = function(name){
   document.getElementById('view-'+name).classList.add('active');
   document.querySelector(`[data-view="${name}"]`).classList.add('active');
   window.scrollTo(0,0);
-  if(name==='dashboard'){renderWeekGrid();renderCalendar();renderStats();renderProgBars();}
+  if(name==='dashboard'){renderTrackerMatrix();renderDayCards();renderCalendar();renderStats();renderProgBars();}
   if(name==='today')renderToday();
   if(name==='settings')renderSettingsHabits();
 };
