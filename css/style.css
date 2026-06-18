@@ -192,7 +192,7 @@ button{cursor:pointer;}
 .mcb:hover:not(.future){border-color:var(--acc);background:var(--grad-s);}
 .mcb.done{background:var(--acc);border-color:var(--acc);}
 .mcb.future{opacity:.25;cursor:default;}
-.mcb.missed{background:var(--err);border-color:var(--err);}
+.mcb.missed{background:rgba(244, 94, 94, 0.35);border-color:rgba(239,68,68,0.5);}
 .mcb.today-col{border-color:var(--acc);}
 
 /* ── DAY CARDS ──────────────────────────────────────────────── */
