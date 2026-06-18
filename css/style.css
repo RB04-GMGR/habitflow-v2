@@ -6,7 +6,7 @@
   --acc:#ec4899;--acc2:#a855f7;
   --grad:linear-gradient(135deg,#ec4899,#a855f7);
   --grad-s:linear-gradient(135deg,rgba(236,72,153,.1),rgba(168,85,247,.07));
-  --ok:#10b981;--err:#ef4444;--warn:#f59e0b;
+  --ok:#10b981;--err:#ee5e5e;--warn:#f59e0b;
   --nav-bg:rgba(255,240,245,.92);
 }
 [data-theme="girl"]{
@@ -16,7 +16,7 @@
   --acc:#ff4d8d;--acc2:#e0306e;
   --grad:linear-gradient(135deg,#ff4d8d,#ffb3d1);
   --grad-s:linear-gradient(135deg,rgba(255,77,141,.1),rgba(255,179,209,.07));
-  --ok:#10b981;--err:#ef4444;--warn:#f59e0b;
+  --ok:#10b981;--err:#f05959;--warn:#f59e0b;
   --nav-bg:rgba(255,245,249,.92);
 }
 [data-theme="light-blue"]{
