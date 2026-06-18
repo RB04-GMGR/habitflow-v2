@@ -10,7 +10,7 @@
   --nav-bg:rgba(255,240,245,.92);
 }
 [data-theme="girl"]{
-  --bg:#fff5f9;--bg2:#ffffff;--bg3:#ffe4f0;--bg4:#fff0f7;
+  --bg:#fff5f9;--bg2:z#ffffff;--bg3:#ffe4f0;--bg4:#fff0f7;
   --border:rgba(255,77,141,.15);--border2:rgba(255,77,141,.32);
   --text:#2a0014;--text2:#be185d;--text3:#f9a8d4;
   --acc:#ff4d8d;--acc2:#e0306e;
@@ -170,25 +170,28 @@ button{cursor:pointer;}
 
 /* ── MATRIX TABLE ───────────────────────────────────────────── */
 .matrix-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
-.matrix{width:100%;border-collapse:collapse;min-width:500px;}
-.matrix thead th{background:var(--bg3);font-size:11px;font-weight:600;color:var(--text2);text-align:center;padding:10px 6px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);}
-.matrix .col-habit{text-align:left;padding-left:14px;min-width:140px;position:sticky;left:0;background:var(--bg3);z-index:2;}
-.matrix .col-prog{min-width:90px;}
+.matrix{width:100%;border-collapse:collapse;min-width:480px;}
+.matrix thead th{background:var(--acc);font-size:11px;font-weight:600;color:rgba(255,255,255,.9);text-align:center;padding:7px 4px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);}
+.matrix .col-habit{text-align:left;padding-left:12px;min-width:130px;position:sticky;left:0;background:var(--acc);z-index:2;color:rgba(255,255,255,.9);}
+.matrix .col-prog{min-width:110px;}
 .matrix tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
 .matrix tbody tr:last-child{border-bottom:none;}
 .matrix tbody tr:hover{background:var(--bg4);}
-.matrix td{text-align:center;padding:9px 6px;vertical-align:middle;}
-.matrix .td-name{text-align:left;padding-left:14px;font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;position:sticky;left:0;background:var(--bg2);z-index:1;}
+.matrix td{text-align:center;padding:7px 4px;vertical-align:middle;}
+.matrix .td-name{text-align:left;padding-left:12px;font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;position:sticky;left:0;background:var(--bg2);z-index:1;}
 .matrix tbody tr:hover .td-name{background:var(--bg4);}
-.matrix .td-prog{font-size:12px;font-weight:600;color:var(--text2);}
-.matrix .td-prog.p100{color:var(--acc);}
+.matrix .td-prog{padding:6px 10px;}
+.prog-cell{display:flex;align-items:center;gap:6px;}
+.prog-cell-track{flex:1;height:5px;background:var(--bg3);border-radius:10px;overflow:hidden;min-width:40px;}
+.prog-cell-fill{height:100%;border-radius:10px;transition:width .4s;}
+.prog-cell-pct{font-size:11px;font-weight:600;color:var(--text2);white-space:nowrap;min-width:32px;}
+.prog-cell-pct.p100{color:var(--acc);}
 
 /* Checkboxes */
-.mcb{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;background:transparent;vertical-align:middle;}
+.mcb{width:20px;height:20px;border-radius:5px;border:1.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;background:transparent;vertical-align:middle;}
 .mcb:hover:not(.future){border-color:var(--acc);background:var(--grad-s);}
 .mcb.done{background:var(--acc);border-color:var(--acc);}
-.mcb.missed{background:var(--err);border-color:var(--err);}
-.mcb.future{opacity:.3;cursor:default;}
+.mcb.future{opacity:.25;cursor:default;}
 .mcb.today-col{border-color:var(--acc);}
 
 /* ── DAY CARDS ──────────────────────────────────────────────── */

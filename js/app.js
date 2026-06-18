@@ -168,6 +168,17 @@ onAuthStateChanged(auth, async u=>{
 
 // ── LOAD ─────────────────────────────────────────────────────────
 async function loadAll(){
+  // Auto-reset lundi : si dernière session était une semaine précédente, on ne touche à rien
+  // (les logs sont par date donc le reset est automatique — on s'assure juste que le localStorage
+  // ne garde pas une semaine morte)
+  const lastVisit = localStorage.getItem('hf_last_visit');
+  const todayStr = todayDk();
+  const monStr = dk(getMonday(TODAY).getFullYear(), getMonday(TODAY).getMonth(), getMonday(TODAY).getDate());
+  if(lastVisit && lastVisit < monStr){
+    // Nouvelle semaine : on peut notifier l'user
+    setTimeout(()=>toast('🗓 Nouvelle semaine — nouvelle chance !'), 1500);
+  }
+  localStorage.setItem('hf_last_visit', todayStr);
   // habits
   const hs = await getDoc(hDoc());
   habits = hs.exists() ? (hs.data().list||[]) : [];
@@ -383,14 +394,14 @@ function renderMatrix(){
   const days=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
   const dates=weekDates();
 
-  // Build header
+  // Header
   const headRow=$('matrix-head-row');
   headRow.innerHTML='<th class="col-habit">Habitude</th>';
   dates.forEach((dt,i)=>{
     const isT=dt.toDateString()===TODAY.toDateString();
     const th=document.createElement('th');
-    th.textContent=days[i];
-    th.style.minWidth='44px';
+    th.innerHTML=`<span>${days[i]}</span>`;
+    th.style.minWidth='38px';
     if(isT) th.style.color='var(--acc)';
     headRow.appendChild(th);
   });
@@ -398,46 +409,51 @@ function renderMatrix(){
   progTh.className='col-prog'; progTh.textContent='Progress';
   headRow.appendChild(progTh);
 
-  // Body
   const tbody=$('matrix-body');
   tbody.innerHTML='';
 
   if(!habits.length){
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td colspan="${9}" style="text-align:center;padding:24px;font-size:13px;color:var(--text2);">Aucune habitude — ajoute-en dans Paramètres</td>`;
-    tbody.appendChild(tr);
-    return;
+    tr.innerHTML=`<td colspan="9" style="text-align:center;padding:20px;font-size:13px;color:var(--text2);">Aucune habitude — ajoute-en dans Paramètres</td>`;
+    tbody.appendChild(tr); return;
   }
 
   habits.forEach(h=>{
     const tr=document.createElement('tr');
-    let done=0;
+    let doneCount=0;
     const cells=dates.map((dt,i)=>{
       const log=getLog(dt.getFullYear(),dt.getMonth(),dt.getDate());
       const isDone=!!log[h.id];
       const isFuture=dt>TODAY;
-      const isMissed=!isDone&&!isFuture&&(isLate(h)||isPastTime(h.time));
       const isT=dt.toDateString()===TODAY.toDateString();
-      if(isDone) done++;
+      if(isDone) doneCount++;
       let cls='mcb';
       if(isDone) cls+=' done';
-      else if(isMissed) cls+=' missed';
       else if(isFuture) cls+=' future';
       else if(isT) cls+=' today-col';
       const y=dt.getFullYear(),m=dt.getMonth(),d=dt.getDate();
       const click=!isFuture?`onclick="toggleHabitDay('${h.id}',${y},${m},${d})"`:'' ;
       const icon=isDone
-        ?`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
-        :isMissed
-        ?`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
+        ?`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
         :'';
       return `<td><div class="${cls}" ${click}>${icon}</div></td>`;
     }).join('');
 
-    const total=dates.filter(d=>d<=TODAY).length;
-    const pct=total?Math.round(done/total*100):0;
-    const p100=pct===100&&done>0;
-    tr.innerHTML=`<td class="td-name">${h.name}</td>${cells}<td class="td-prog ${p100?'p100':''}">${done?pct+'%'+(p100?' 🏆':''):''}</td>`;
+    // Progress sur 7
+    const pct=Math.round(doneCount/7*100);
+    const p100=doneCount===7;
+    const barColor=pct>=100?'var(--ok)':pct>=75?'#84cc16':pct>=50?'var(--warn)':doneCount>0?'var(--err)':'var(--border2)';
+
+    const progCell=`<td class="td-prog">
+      <div class="prog-cell">
+        <div class="prog-cell-track">
+          <div class="prog-cell-fill" style="width:${pct}%;background:${barColor};"></div>
+        </div>
+        <span class="prog-cell-pct ${p100?'p100':''}">${doneCount>0?pct+'%':''}${p100?' 🏆':''}</span>
+      </div>
+    </td>`;
+
+    tr.innerHTML=`<td class="td-name">${h.name}</td>${cells}${progCell}`;
     tbody.appendChild(tr);
   });
 }
