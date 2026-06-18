@@ -400,9 +400,12 @@ function renderMatrix(){
   dates.forEach((dt,i)=>{
     const isT=dt.toDateString()===TODAY.toDateString();
     const th=document.createElement('th');
-    th.innerHTML=`<span>${days[i]}</span>`;
+    th.textContent=days[i];
     th.style.minWidth='38px';
-    if(isT) th.style.color='var(--acc)';
+    if(isT){
+  th.style.background='rgba(0,0,0,0.18)';
+  th.style.fontWeight='800';
+}
     headRow.appendChild(th);
   });
   const progTh=document.createElement('th');
@@ -421,20 +424,29 @@ function renderMatrix(){
   habits.forEach(h=>{
     const tr=document.createElement('tr');
     let doneCount=0;
-    const cells=dates.map((dt,i)=>{
+
+    const cells=dates.map((dt)=>{
       const log=getLog(dt.getFullYear(),dt.getMonth(),dt.getDate());
       const isDone=!!log[h.id];
-      const isFuture=dt>TODAY;
       const isT=dt.toDateString()===TODAY.toDateString();
+      // Rouge si jour passé (pas aujourd'hui) et pas coché
+      const isPast=dt<TODAY && !isT;
+      const isFuture=dt>TODAY;
+
       if(isDone) doneCount++;
+
       let cls='mcb';
       if(isDone) cls+=' done';
       else if(isFuture) cls+=' future';
+      else if(isPast) cls+=' missed';   // rouge automatique si jour passé non coché
       else if(isT) cls+=' today-col';
+
       const y=dt.getFullYear(),m=dt.getMonth(),d=dt.getDate();
       const click=!isFuture?`onclick="toggleHabitDay('${h.id}',${y},${m},${d})"`:'' ;
       const icon=isDone
         ?`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+        :isPast&&!isFuture
+        ?`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
         :'';
       return `<td><div class="${cls}" ${click}>${icon}</div></td>`;
     }).join('');
@@ -442,14 +454,14 @@ function renderMatrix(){
     // Progress sur 7
     const pct=Math.round(doneCount/7*100);
     const p100=doneCount===7;
-    const barColor=pct>=100?'var(--ok)':pct>=75?'#84cc16':pct>=50?'var(--warn)':doneCount>0?'var(--err)':'var(--border2)';
+    const barColor=pct>=100?'var(--ok)':pct>=75?'#84cc16':pct>=50?'var(--warn)':doneCount>0?'var(--acc)':'var(--border2)';
 
     const progCell=`<td class="td-prog">
       <div class="prog-cell">
         <div class="prog-cell-track">
           <div class="prog-cell-fill" style="width:${pct}%;background:${barColor};"></div>
         </div>
-        <span class="prog-cell-pct ${p100?'p100':''}">${doneCount>0?pct+'%':''}${p100?' 🏆':''}</span>
+        <span class="prog-cell-pct ${p100?'p100':''}">${p100?'🏆':doneCount>0?pct+'%':''}</span>
       </div>
     </td>`;
 

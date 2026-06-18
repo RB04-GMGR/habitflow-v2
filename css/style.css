@@ -181,10 +181,10 @@ button{cursor:pointer;}
 .matrix .td-name{text-align:left;padding-left:12px;font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;position:sticky;left:0;background:var(--bg2);z-index:1;}
 .matrix tbody tr:hover .td-name{background:var(--bg4);}
 .matrix .td-prog{padding:6px 10px;}
-.prog-cell{display:flex;align-items:center;gap:6px;}
-.prog-cell-track{flex:1;height:5px;background:var(--bg3);border-radius:10px;overflow:hidden;min-width:40px;}
-.prog-cell-fill{height:100%;border-radius:10px;transition:width .4s;}
-.prog-cell-pct{font-size:11px;font-weight:600;color:var(--text2);white-space:nowrap;min-width:32px;}
+.prog-cell{display:flex;align-items:center;gap:8px;padding:0 4px;}
+.prog-cell-track{flex:1;height:14px;background:var(--bg3);border-radius:20px;overflow:hidden;min-width:60px;}
+.prog-cell-fill{height:100%;border-radius:20px;transition:width .4s;}
+.prog-cell-pct{font-size:12px;font-weight:700;color:var(--text2);white-space:nowrap;min-width:36px;text-align:right;}
 .prog-cell-pct.p100{color:var(--acc);}
 
 /* Checkboxes */
@@ -192,6 +192,7 @@ button{cursor:pointer;}
 .mcb:hover:not(.future){border-color:var(--acc);background:var(--grad-s);}
 .mcb.done{background:var(--acc);border-color:var(--acc);}
 .mcb.future{opacity:.25;cursor:default;}
+.mcb.missed{background:var(--err);border-color:var(--err);}
 .mcb.today-col{border-color:var(--acc);}
 
 /* ── DAY CARDS ──────────────────────────────────────────────── */
