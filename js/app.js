@@ -53,6 +53,8 @@ let viewMonth = new Date().getMonth();
 let viewYear  = new Date().getFullYear();
 let editId = null;
 let dragSrcIdx = null;
+let firstLogDate = null;
+
 
 const TODAY = new Date();
 
@@ -88,10 +90,14 @@ function isLate(h){
 
 // ── COMPLETION ───────────────────────────────────────────────────
 function rate(y,m,d){
+  if(!habits.length) return null;
+  const date = new Date(y,m,d);
+  if(date > TODAY) return null;
+  if(firstLogDate && date < firstLogDate) return null;
   const log = getLog(y,m,d);
-  if(!habits.length || !Object.keys(log).length) return null;
   return Math.round(habits.filter(h=>log[h.id]).length / habits.length * 100);
 }
+
 function streak(){
   let s=0, d=new Date(TODAY);
   while(s<365){ const r=rate(d.getFullYear(),d.getMonth(),d.getDate()); if(r===null||r<50)break; s++; d.setDate(d.getDate()-1); }
@@ -185,12 +191,25 @@ async function loadAll(){
   // weekly focus
   const ud = await getDoc(uDoc());
   if(ud.exists()) weeklyFocus = ud.data().weeklyFocus||'';
-  // logs (this month + last)
+  
+  // logs (6 derniers mois pour la tendance)
   const y=TODAY.getFullYear(), m=TODAY.getMonth();
-  for(const [ly,lm] of [[y,m],[y,m-1<0?11:m-1]]){
-    const s = await getDoc(lDoc(ly,lm<0?11:lm));
+  for(let i=0;i<6;i++){
+    let lm=m-i, ly=y;
+    while(lm<0){ lm+=12; ly--; }
+    const s = await getDoc(lDoc(ly,lm));
     if(s.exists()) Object.assign(logs, s.data().days||{});
   }
+
+   // première date où une activité a vraiment été enregistrée
+  const logKeys = Object.keys(logs).sort();
+  if(logKeys.length){
+    const [fy,fm,fd] = logKeys[0].split('-').map(Number);
+    firstLogDate = new Date(fy,fm,fd);
+  } else {
+    firstLogDate = null;
+  }
+
   // tasks (this week)
   for(const dt of weekDates()){
     const key = dk(dt.getFullYear(),dt.getMonth(),dt.getDate());
@@ -242,17 +261,36 @@ window.addTask = async function(dateKey){
   if(!name) return;
   if(!tasks[dateKey]) tasks[dateKey]=[];
   tasks[dateKey].push({id:'t'+Date.now(),name,done:false});
-  await saveTasks(dateKey);
   inp.value='';
+  renderDayCards();        // affichage immédiat
+  if(dateKey===todayDk()) renderToday();
+  saveTasks(dateKey);       // sauvegarde en arrière-plan, pas d'await
+};
+
+window.toggleTask = function(key, id){
+  const t = (tasks[key]||[]).find(x=>x.id===id);
+  if(!t) return;
+  t.done = !t.done;
   renderDayCards();
+  if(key===todayDk()) renderToday();
+  saveTasks(key);
 };
-window.toggleTask = async function(dateKey,id){
-  const t = (tasks[dateKey]||[]).find(x=>x.id===id);
-  if(t){ t.done=!t.done; await saveTasks(dateKey); renderDayCards(); }
+
+window.deleteTask = function(key, id){
+  tasks[key] = (tasks[key]||[]).filter(t=>t.id!==id);
+  renderDayCards();
+  if(key===todayDk()) renderToday();
+  saveTasks(key);
 };
-window.deleteTask = async function(dateKey,id){
-  tasks[dateKey]=(tasks[dateKey]||[]).filter(x=>x.id!==id);
-  await saveTasks(dateKey); renderDayCards();
+
+window.moveTask = function(key, idx, dir){
+  const list = tasks[key];
+  if(!list) return;
+  const newIdx = idx+dir;
+  if(newIdx<0 || newIdx>=list.length) return;
+  [list[idx], list[newIdx]] = [list[newIdx], list[idx]];
+  renderDayCards();
+  saveTasks(key);
 };
 
 // ── HABIT CRUD ───────────────────────────────────────────────────
@@ -478,25 +516,27 @@ function renderDayCards(){
 
   dates.forEach((dt,i)=>{
     const isT=dt.toDateString()===TODAY.toDateString();
-    const isFuture=dt>TODAY;
-    const log=getLog(dt.getFullYear(),dt.getMonth(),dt.getDate());
-    const done=habits.filter(h=>log[h.id]).length;
-    const pct=habits.length?Math.round(done/habits.length*100):0;
-    const circ=138; const offset=circ-(circ*pct/100);
-    const col=pct>=100?'var(--ok)':pct>=75?'#84cc16':pct>=50?'var(--warn)':'var(--err)';
     const dateStr=dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
     const key=dk(dt.getFullYear(),dt.getMonth(),dt.getDate());
     const dayTasks=tasks[key]||[];
 
+    const done=dayTasks.filter(t=>t.done).length;
+    const pct=dayTasks.length?Math.round(done/dayTasks.length*100):0;
+    const circ=245; const offset=circ-(circ*pct/100);
+
     const card=document.createElement('div');
     card.className='day-card'+(isT?' today':'');
 
-    const taskHTML=dayTasks.map(t=>`
+    const taskHTML=dayTasks.map((t,idx)=>`
       <div class="dc-task ${t.done?'done':''}">
         <div class="dc-tcb ${t.done?'done':''}" onclick="toggleTask('${key}','${t.id}')">
-          ${t.done?'<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}
+          ${t.done?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}
         </div>
         <span class="dc-tname">${t.name}</span>
+        <div class="dc-tmove">
+          <button class="dc-tmv" onclick="moveTask('${key}',${idx},-1)" ${idx===0?'disabled':''}>▲</button>
+          <button class="dc-tmv" onclick="moveTask('${key}',${idx},1)" ${idx===dayTasks.length-1?'disabled':''}>▼</button>
+        </div>
         <button class="dc-tdel" onclick="deleteTask('${key}','${t.id}')">✕</button>
       </div>`).join('');
 
@@ -506,28 +546,32 @@ function renderDayCards(){
         <div class="dc-date">${dateStr}</div>
       </div>
       <div class="dc-ring">
-        <svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="26" cy="26" r="22" class="dc-rbg"/>
-          <circle cx="26" cy="26" r="22" class="dc-rfg" style="stroke:${isFuture?'var(--bg3)':col};stroke-dashoffset:${isFuture?circ:offset}"/>
+        <svg viewBox="0 0 92 92" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="46" cy="46" r="39" class="dc-rbg"/>
+          <circle cx="46" cy="46" r="39" class="dc-rfg" style="stroke-dashoffset:${offset}"/>
         </svg>
-        <div class="dc-rpct">${isFuture?'–':pct+'%'}</div>
+        <div class="dc-rpct">${pct}%</div>
       </div>
-      <div class="dc-tasks">
-        ${taskHTML||'<div style="font-size:10px;color:var(--text3);padding:3px 0;">Aucune tâche</div>'}
-        <div class="dc-add">
-          <input type="text" id="task-inp-${key}" placeholder="Ajouter..." onkeydown="if(event.key==='Enter')addTask('${key}')"/>
-          <button onclick="addTask('${key}')">+</button>
-        </div>
+      <div class="dc-tasks-label">Tasks</div>
+      <div class="dc-tasks" id="dc-tasks-${key}">${taskHTML}</div>
+      <div class="dc-add">
+        <input type="text" id="task-inp-${key}" placeholder="Ajouter une tâche..." onkeydown="if(event.key==='Enter'){event.preventDefault();addTask('${key}');}"/>
+        <button type="button" onclick="addTask('${key}')">+</button>
       </div>`;
     grid.appendChild(card);
   });
 }
 
+
 // TODAY
 function renderToday(){
   const log=getLog(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
-  const done=habits.filter(h=>log[h.id]).length;
-  const pct=habits.length?Math.round(done/habits.length*100):0;
+  const habitsDone=habits.filter(h=>log[h.id]).length;
+  const todayTasks=tasks[todayDk()]||[];
+  const tasksDone=todayTasks.filter(t=>t.done).length;
+  const totalDone=habitsDone+tasksDone;
+  const totalPossible=habits.length+todayTasks.length;
+  const pct=totalPossible?Math.round(totalDone/totalPossible*100):0;
   const circ=175.9; const offset=circ-(circ*pct/100);
   const col=pct>=100?'var(--ok)':pct>=75?'#84cc16':pct>=50?'var(--warn)':pct>0?'var(--err)':'var(--acc)';
   $('ring-fg').style.stroke=col;
@@ -573,11 +617,86 @@ function renderToday(){
 }
 
 // STATS
+function renderOverallProgress(){
+  const dates=weekDates();
+  const names=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const bars=$('op-bars'); bars.innerHTML='';
+
+  let totalDone=0, totalPossible=0;
+
+  dates.forEach((dt,i)=>{
+    const isFuture=dt>TODAY;
+    const log=getLog(dt.getFullYear(),dt.getMonth(),dt.getDate());
+    const done=habits.filter(h=>log[h.id]).length;
+    const pct=habits.length?Math.round(done/habits.length*100):0;
+
+    if(!isFuture){ totalDone+=done; totalPossible+=habits.length; }
+
+    const col=document.createElement('div');
+    col.className='op-bar-col';
+    col.innerHTML=`
+      <div class="op-bar ${isFuture?'future':''}" style="height:${isFuture?2:Math.max(pct,2)}%"></div>
+      <div class="op-bar-day">${names[i]}</div>`;
+    bars.appendChild(col);
+  });
+
+  const weekPct=totalPossible?Math.round(totalDone/totalPossible*100):0;
+  const circ=301.6; const offset=circ-(circ*weekPct/100);
+  $('op-donut-fg').style.strokeDashoffset=offset;
+  $('op-donut-pct').textContent=weekPct+'%';
+  $('op-donut-sub').textContent=`${totalDone} / ${totalPossible} complété`;
+}
+
+function renderTrend6Months(){
+  const container=$('op-trend-bars'); container.innerHTML='';
+  if(!habits.length) return;
+
+  // Semaines de aujourd'hui jusqu'à fin décembre de l'année en cours
+  const weeks=[];
+  let cursor=getMonday(TODAY);
+  const endOfYear=new Date(TODAY.getFullYear(),11,31);
+
+  while(cursor<=endOfYear){
+    weeks.push(new Date(cursor));
+    cursor=new Date(cursor); cursor.setDate(cursor.getDate()+7);
+  }
+
+  weeks.forEach((mon,idx)=>{
+    let done=0, possible=0;
+    const monEnd=new Date(mon); monEnd.setDate(mon.getDate()+6);
+    const isFuture=mon>TODAY;
+
+    if(!isFuture){
+      for(let i=0;i<7;i++){
+        const d=new Date(mon); d.setDate(mon.getDate()+i);
+        if(d>TODAY) continue;
+        const log=getLog(d.getFullYear(),d.getMonth(),d.getDate());
+        done+=habits.filter(h=>log[h.id]).length;
+        possible+=habits.length;
+      }
+    }
+
+    const pct=possible?Math.round(done/possible*100):0;
+    const isCurrent=mon.toDateString()===getMonday(TODAY).toDateString();
+    const showLbl=idx%4===0;
+
+    const col=document.createElement('div');
+    col.className='op-trend-col';
+    col.innerHTML=`
+      <div class="op-trend-bar ${isFuture?'future':isCurrent?'current':''}" style="height:${isFuture?2:Math.max(pct,2)}%" title="Semaine du ${mon.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})} — ${isFuture?'à venir':pct+'%'}"></div>
+      ${showLbl?`<div class="op-trend-lbl">${mon.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</div>`:''}
+    `;
+    container.appendChild(col);
+  });
+}
+
 function renderStats(){
   $('st-streak').textContent=streak();
   $('st-best').textContent=bestStreak();
   $('st-month').textContent=monthAvg(TODAY.getFullYear(),TODAY.getMonth())+'%';
   $('st-perfect').textContent=perfectDays(TODAY.getFullYear(),TODAY.getMonth());
+  renderOverallProgress();
+  renderTrend6Months();
 }
 
 // CALENDAR
@@ -717,3 +836,36 @@ setInterval(()=>{
   const log=getLog(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
   if(habits.some(h=>!log[h.id]&&(isLate(h)||isPastTime(h.time)))) renderToday();
 },60000);
+
+// ── SWIPE NAVIGATION (mobile) ─────────────────────────────────────
+const VIEW_ORDER = ['tracker','today','stats','settings'];
+let touchStartX=0, touchStartY=0, touchStartTarget=null;
+
+document.addEventListener('touchstart', e=>{
+  if(!$('app') || $('app').classList.contains('hidden')) return;
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchStartTarget = e.target;
+}, {passive:true});
+
+document.addEventListener('touchend', e=>{
+  if(!$('app') || $('app').classList.contains('hidden')) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+
+  // Ignore le swipe nav si ça démarre dans une zone qui scroll déjà horizontalement
+  if(touchStartTarget && touchStartTarget.closest('.day-cards-wrap, .matrix-wrap, .op-trend-bars, .modal-bg')) return;
+
+  const absX = Math.abs(dx), absY = Math.abs(dy);
+  if(absX < 75 || absX < absY*1.4) return; // pas assez horizontal / pas assez ample
+
+  const current = document.querySelector('.view.active').id.replace('view-','');
+  const idx = VIEW_ORDER.indexOf(current);
+  if(idx === -1) return;
+
+  if(dx < 0 && idx < VIEW_ORDER.length-1){
+    goView(VIEW_ORDER[idx+1]); // swipe gauche → page suivante
+  } else if(dx > 0 && idx > 0){
+    goView(VIEW_ORDER[idx-1]); // swipe droite → page précédente
+  }
+}, {passive:true});

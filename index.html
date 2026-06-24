@@ -95,9 +95,12 @@
         </table>
       </div>
 
-      <!-- DAY CARDS -->
+     <!-- DAY CARDS -->
       <div class="section-label" style="margin-top:1.5rem">Tâches par jour</div>
-      <div class="day-cards" id="day-cards"></div>
+      <div class="day-cards-wrap">
+        <div class="day-cards" id="day-cards"></div>
+      </div>
+      
 
     </div>
   </div>
@@ -126,9 +129,35 @@
   </div>
 
   <!-- STATS VIEW -->
-  <div id="view-stats" class="view">
+      <div id="view-stats" class="view">
     <div class="view-inner">
-      <div class="section-label" style="margin-top:0">Vue d'ensemble</div>
+
+      <!-- OVERALL PROGRESS BANNER -->
+      <div class="op-banner">
+        <div class="op-title">Overall Progress</div>
+      </div>
+      <div class="op-card">
+        <div class="op-chart-side">
+          <div class="op-chart-label">Cette semaine</div>
+          <div class="op-bars" id="op-bars"></div>
+        </div>
+        <div class="op-donut-side">
+          <svg class="op-donut-svg" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="48" class="op-donut-bg"/>
+            <circle cx="60" cy="60" r="48" class="op-donut-fg" id="op-donut-fg"/>
+          </svg>
+          <div class="op-donut-pct" id="op-donut-pct">0%</div>
+          <div class="op-donut-sub" id="op-donut-sub">0 / 0 complété</div>
+        </div>
+      </div>
+
+      <!-- 6 MONTH TREND -->
+       <div class="section-label" style="margin-top:1.4rem">Tendance — Jusqu'à fin décembre 2026</div>
+      <div class="op-card op-trend-card">
+        <div class="op-trend-bars" id="op-trend-bars"></div>
+      </div>
+
+      <div class="section-label">Vue d'ensemble</div>
       <div class="stats-grid">
         <div class="stat-card accent"><div class="stat-num" id="st-streak">0</div><div class="stat-lbl">Streak actuel</div></div>
         <div class="stat-card"><div class="stat-num" id="st-best">0</div><div class="stat-lbl">Meilleur streak</div></div>
