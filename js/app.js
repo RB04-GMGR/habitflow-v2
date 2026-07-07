@@ -210,15 +210,23 @@ async function loadAll(){
     firstLogDate = null;
   }
 
-  // tasks (this week)
-  for(const dt of weekDates()){
-    const key = dk(dt.getFullYear(),dt.getMonth(),dt.getDate());
+  // tasks : semaine en cours + 3 semaines précédentes
+  const allDatesToLoad = [...weekDates()];
+  for(let w=1;w<=3;w++){
+    const prevMon = new Date(getMonday(TODAY));
+    prevMon.setDate(prevMon.getDate() - w*7);
+    for(let i=0;i<7;i++){
+      const d=new Date(prevMon); d.setDate(prevMon.getDate()+i);
+      allDatesToLoad.push(d);
+    }
+  }
+  for(const dt of allDatesToLoad){
+    const key=dk(dt.getFullYear(),dt.getMonth(),dt.getDate());
     try{
-      const s = await getDoc(tDoc(key));
-      tasks[key] = s.exists() ? (s.data().list||[]) : [];
+      const s=await getDoc(tDoc(key));
+      tasks[key]=s.exists()?(s.data().list||[]):[];
     }catch{ tasks[key]=[]; }
   }
-}
 
 async function saveHabits(){ if(user) await setDoc(hDoc(),{list:habits}); }
 async function saveLog(dateKey){
@@ -232,7 +240,7 @@ async function saveTasks(dateKey){
   if(!user) return;
   await setDoc(tDoc(dateKey),{list:tasks[dateKey]||[]});
 }
-
+}
 // ── TOGGLE HABIT ─────────────────────────────────────────────────
 window.toggleHabit = async function(id){
   const k = todayDk();
@@ -265,6 +273,17 @@ window.addTask = async function(dateKey){
   renderDayCards();        // affichage immédiat
   if(dateKey===todayDk()) renderToday();
   saveTasks(dateKey);       // sauvegarde en arrière-plan, pas d'await
+};
+
+window.addTaskInline = function(key, inp){
+  const name = inp.value.trim();
+  if(!name) return;
+  inp.value = '';
+  if(!tasks[key]) tasks[key]=[];
+  tasks[key].push({id:'t'+Date.now(), name, done:false});
+  renderDayCards();
+  if(key===todayDk()) renderToday();
+  saveTasks(key);
 };
 
 window.toggleTask = function(key, id){
@@ -513,6 +532,7 @@ function renderDayCards(){
   const dates=weekDates();
   const names=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
   const grid=$('day-cards'); grid.innerHTML='';
+  const ROWS=15;
 
   dates.forEach((dt,i)=>{
     const isT=dt.toDateString()===TODAY.toDateString();
@@ -527,18 +547,26 @@ function renderDayCards(){
     const card=document.createElement('div');
     card.className='day-card'+(isT?' today':'');
 
-    const taskHTML=dayTasks.map((t,idx)=>`
-      <div class="dc-task ${t.done?'done':''}">
-        <div class="dc-tcb ${t.done?'done':''}" onclick="toggleTask('${key}','${t.id}')">
-          ${t.done?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}
-        </div>
-        <span class="dc-tname">${t.name}</span>
-        <div class="dc-tmove">
-          <button class="dc-tmv" onclick="moveTask('${key}',${idx},-1)" ${idx===0?'disabled':''}>▲</button>
-          <button class="dc-tmv" onclick="moveTask('${key}',${idx},1)" ${idx===dayTasks.length-1?'disabled':''}>▼</button>
-        </div>
-        <button class="dc-tdel" onclick="deleteTask('${key}','${t.id}')">✕</button>
-      </div>`).join('');
+    let rowsHTML='';
+    for(let r=0;r<ROWS;r++){
+      const t=dayTasks[r];
+      if(t){
+        rowsHTML+=`
+          <div class="dc-row${t.done?' done':''}">
+            <div class="dc-cb${t.done?' done':''}" onclick="toggleTask('${key}','${t.id}')"></div>
+            <span class="dc-rname">${t.name}</span>
+            <button class="dc-rdel" onclick="deleteTask('${key}','${t.id}')">✕</button>
+          </div>`;
+      } else {
+        rowsHTML+=`
+          <div class="dc-row empty">
+            <div class="dc-cb empty"></div>
+            <input class="dc-rinp" type="text" placeholder="—"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();addTaskInline('${key}',this);}"
+              onblur="addTaskInline('${key}',this)"/>
+          </div>`;
+      }
+    }
 
     card.innerHTML=`
       <div class="dc-head">
@@ -553,15 +581,11 @@ function renderDayCards(){
         <div class="dc-rpct">${pct}%</div>
       </div>
       <div class="dc-tasks-label">Tasks</div>
-      <div class="dc-tasks" id="dc-tasks-${key}">${taskHTML}</div>
-      <div class="dc-add">
-        <input type="text" id="task-inp-${key}" placeholder="Ajouter une tâche..." onkeydown="if(event.key==='Enter'){event.preventDefault();addTask('${key}');}"/>
-        <button type="button" onclick="addTask('${key}')">+</button>
-      </div>`;
+      <div class="dc-rows" id="dc-rows-${key}">${rowsHTML}</div>`;
+
     grid.appendChild(card);
   });
 }
-
 
 // TODAY
 function renderToday(){
